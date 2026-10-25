@@ -8,7 +8,7 @@ function App() {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    fetch('http://myportfoliovite.onrender.com/api/profile')
+    fetch('https://myportfoliovite.onrender.com/api/profile')
       .then((response) => response.json())
       .then((data) => setProfile(data))
       .catch((error) => console.error('Backend error:', error));
