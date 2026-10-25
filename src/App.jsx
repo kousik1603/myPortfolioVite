@@ -1,7 +1,19 @@
+import { useEffect, useState } from 'react';
 
 import './App.css'
 
 function App() {
+
+  
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/profile')
+      .then((response) => response.json())
+      .then((data) => setProfile(data))
+      .catch((error) => console.error('Backend error:', error));
+  }, []);
+
   return (
     <div className="portfolio">
       <nav className="navbar">
@@ -23,6 +35,18 @@ function App() {
     <p className="eyebrow">WELCOME TO MY PORTFOLIO</p>
 
     <h1>Hi, I'm <span>Kousik</span></h1>
+
+    
+{profile && (
+  <div className="backend-profile">
+    <p>Name: {profile.name}</p>
+    <p>Role: {profile.role}</p>
+    <p>
+      Skills: {profile.skills.join(', ')}
+    </p>
+  </div>
+)}
+
 
     <h2>I'm a Future Web Developer</h2>
 
