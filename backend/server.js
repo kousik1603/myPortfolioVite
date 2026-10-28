@@ -1,34 +1,24 @@
-
 import 'dotenv/config';
-
 import express from 'express';
-
-app.set('trust proxy', 1);
-
 import cors from 'cors';
-
 import rateLimit from 'express-rate-limit';
-
-const contactLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minute
-  max: 5,                   // max 5 ta message
-  message: { error: 'Too many messages, try again later.' },
-});
-
-app.use('/api/messages', contactLimiter);
-
-
 import { MongoClient } from 'mongodb';
 
 const app = express();
+app.set('trust proxy', 1); // Render proxy-r jonno
+
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Rate limiter: 15 minute-e max 5 ta message
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many messages, try again later.' },
+});
+
 // Check MongoDB configuration
-console.log(
-  'MongoDB URI loaded:',
-  Boolean(MONGODB_URI)
-);
+console.log('MongoDB URI loaded:', Boolean(MONGODB_URI));
 
 // Middleware
 app.use(cors({
@@ -36,7 +26,8 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
-    'https://kousik1603.github.io'
+    'https://kousik1603.github.io',
+    // 'https://tomar-site.vercel.app',  // Vercel deploy-er por uncomment kore asol URL dao
   ]
 }));
 
@@ -51,9 +42,7 @@ async function startServer() {
 
   try {
     if (!MONGODB_URI) {
-      throw new Error(
-        'MONGODB_URI is missing from the .env file'
-      );
+      throw new Error('MONGODB_URI is missing from the .env file');
     }
 
     // Connect to MongoDB
@@ -61,7 +50,6 @@ async function startServer() {
     await client.connect();
 
     db = client.db('portfolio');
-
     console.log('MongoDB connected successfully!');
 
     // Home route
@@ -74,12 +62,7 @@ async function startServer() {
       res.json({
         name: 'Kousik Das',
         role: 'Full Stack Developer',
-        skills: [
-          'HTML',
-          'CSS',
-          'JavaScript',
-          'React'
-        ]
+        skills: ['HTML', 'CSS', 'JavaScript', 'React']
       });
     });
 
@@ -94,36 +77,40 @@ async function startServer() {
 
         res.json(messages);
       } catch (error) {
-        console.error(
-          'Failed to fetch messages:',
-          error.message
-        );
-
-        res.status(500).json({
-          error: 'Failed to fetch messages.'
-        });
+        console.error('Failed to fetch messages:', error.message);
+        res.status(500).json({ error: 'Failed to fetch messages.' });
       }
     });
 
-    // Save a new contact message
-    app.post('/api/messages', async (req, res) => {
+    // Save a new contact message (rate limit shudhu POST-e)
+    app.post('/api/messages', contactLimiter, async (req, res) => {
+      console.log('POST /api/messages route reached');
 
-      console.log('POST/api/messages route reached');
       try {
-        const { name, email, message } = req.body || {};
+        const { name, email, message, website } = req.body || {};
+
+        // Honeypot: bot hole chupchap ignore
+        if (website) {
+          return res.status(200).json({ ok: true });
+        }
 
         // Validate required fields
         if (
-          typeof name !== 'string' ||
-          !name.trim() ||
-          typeof email !== 'string' ||
-          !email.trim() ||
-          typeof message !== 'string' ||
-          !message.trim()
+          typeof name !== 'string' || !name.trim() ||
+          typeof email !== 'string' || !email.trim() ||
+          typeof message !== 'string' || !message.trim()
         ) {
           return res.status(400).json({
             error: 'Name, email, and message are required.'
           });
+        }
+
+        if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+          return res.status(400).json({ error: 'Invalid email.' });
+        }
+
+        if (message.trim().length > 1000) {
+          return res.status(400).json({ error: 'Message is too long.' });
         }
 
         // Prepare the document
@@ -135,42 +122,26 @@ async function startServer() {
         };
 
         // Insert into MongoDB
-        const result = await db
-          .collection('messages')
-          .insertOne(newMessage);
+        const result = await db.collection('messages').insertOne(newMessage);
 
-        console.log(
-          'Contact message saved:',
-          result.insertedId.toString()
-        );
+        console.log('Contact message saved:', result.insertedId.toString());
 
         return res.status(201).json({
           message: 'Message saved successfully!',
           insertedId: result.insertedId
         });
       } catch (error) {
-        console.error(
-          'Failed to save message:',
-          error.message
-        );
-
-        return res.status(500).json({
-          error: 'Failed to save message.'
-        });
+        console.error('Failed to save message:', error.message);
+        return res.status(500).json({ error: 'Failed to save message.' });
       }
     });
 
     // Start listening for requests
     app.listen(PORT, () => {
-      console.log(
-        `Backend server running at http://localhost:${PORT}`
-      );
+      console.log(`Backend server running at http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error(
-      'Server startup failed:',
-      error.message
-    );
+    console.error('Server startup failed:', error.message);
 
     if (client) {
       await client.close().catch(() => {});
