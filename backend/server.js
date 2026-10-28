@@ -7,7 +7,7 @@ app.set('trust proxy', 1);
 
 import cors from 'cors';
 
-import rateLimit = require('express-rate-limit');
+import rateLimit from 'express-rate-limit';
 
 const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minute
