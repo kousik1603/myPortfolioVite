@@ -2,7 +2,22 @@
 import 'dotenv/config';
 
 import express from 'express';
+
+app.set('trust proxy', 1);
+
 import cors from 'cors';
+
+import rateLimit = require('express-rate-limit');
+
+const contactLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minute
+  max: 5,                   // max 5 ta message
+  message: { error: 'Too many messages, try again later.' },
+});
+
+app.use('/api/messages', contactLimiter);
+
+
 import { MongoClient } from 'mongodb';
 
 const app = express();
