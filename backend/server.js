@@ -27,6 +27,7 @@ app.use(cors({
     'http://localhost:5174',
     'http://localhost:5175',
     'https://kousik1603.github.io',
+    'https://my-portfolio-vite-chi-two.vercel.app'
     // 'https://tomar-site.vercel.app',  // Vercel deploy-er por uncomment kore asol URL dao
   ]
 }));
