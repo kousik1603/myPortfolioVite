@@ -67,21 +67,7 @@ async function startServer() {
       });
     });
 
-    // Get all contact messages
-    app.get('/api/messages', async (req, res) => {
-      try {
-        const messages = await db
-          .collection('messages')
-          .find({})
-          .sort({ createdAt: -1 })
-          .toArray();
-
-        res.json(messages);
-      } catch (error) {
-        console.error('Failed to fetch messages:', error.message);
-        res.status(500).json({ error: 'Failed to fetch messages.' });
-      }
-    });
+    
 
     // Save a new contact message (rate limit shudhu POST-e)
     app.post('/api/messages', contactLimiter, async (req, res) => {
