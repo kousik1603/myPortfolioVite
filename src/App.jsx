@@ -1,16 +1,20 @@
-
 import { useEffect, useState } from 'react';
 import './App.css';
 
+// Backend URL: Vercel/GitHub Actions-e VITE_API_URL set thakle seta use hobe,
+// na thakle local development-er jonno localhost use hobe.
+const API_URL = (
+  import.meta.env.VITE_API_URL || 'http://localhost:5000'
+).replace(/\/$/, '');
+
 function App() {
   const [profile, setProfile] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [formStatus, setFormStatus] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Load profile and messages from the backend
+  // Load profile from the backend
   useEffect(() => {
-    fetch('http://localhost:5000/api/profile')
+    fetch(`${API_URL}/api/profile`)
       .then((response) => {
         if (!response.ok) {
           throw new Error('Failed to load profile');
@@ -20,18 +24,6 @@ function App() {
       .then((data) => setProfile(data))
       .catch((error) => {
         console.error('Profile error:', error);
-      });
-
-    fetch('http://localhost:5000/api/messages')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Failed to load messages');
-        }
-        return response.json();
-      })
-      .then((data) => setMessages(data))
-      .catch((error) => {
-        console.error('Messages error:', error);
       });
   }, []);
 
@@ -45,27 +37,26 @@ function App() {
     const name = formData.get('name');
     const email = formData.get('email');
     const message = formData.get('message');
+    const website = formData.get('website'); // honeypot (bot trap)
 
     setFormStatus('');
     setIsSending(true);
 
     try {
-      const response = await fetch(
-        'http://localhost:5000/api/messages',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            message
-          })
-        }
-      );
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          message,
+          website
+        })
+      });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(
@@ -75,21 +66,17 @@ function App() {
 
       setFormStatus('Message sent successfully!');
       form.reset();
-
-      // Refresh the message list after saving
-      const messagesResponse = await fetch(
-        'http://localhost:5000/api/messages'
-      );
-
-      if (messagesResponse.ok) {
-        const updatedMessages = await messagesResponse.json();
-        setMessages(updatedMessages);
-      }
     } catch (error) {
       console.error('Contact form error:', error);
-      setFormStatus(
-        'Failed to send message. Please try again.'
-      );
+
+      if (error instanceof TypeError) {
+        // Network error: server ghumiye thakte pare (Render free plan)
+        setFormStatus(
+          'Could not reach the server. It may be waking up, please try again in a minute.'
+        );
+      } else {
+        setFormStatus(error.message);
+      }
     } finally {
       setIsSending(false);
     }
@@ -126,7 +113,7 @@ function App() {
                 <p>Name: {profile.name}</p>
                 <p>Role: {profile.role}</p>
                 <p>
-                  Skills: {profile.skills.join(', ')}
+                  Skills: {profile.skills?.join(', ')}
                 </p>
               </div>
             )}
@@ -334,109 +321,65 @@ function App() {
 
         {/* Contact */}
         <section className="section contact" id="contact">
-  <p className="eyebrow">LET'S CONNECT</p>
-  <h2>Contact Me</h2>
+          <p className="eyebrow">LET'S CONNECT</p>
+          <h2>Contact Me</h2>
 
-  <p className="section-description">
-    Have a question or project idea? Send me a message.
-  </p>
+          <p className="section-description">
+            Have a question or project idea? Send me a message.
+          </p>
 
-  <form
-    className="contact-form"
-    onSubmit={async (event) => {
-      event.preventDefault();
+          <form
+            className="contact-form"
+            onSubmit={handleContactSubmit}
+          >
+            <label htmlFor="name">Your Name</label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Enter your name"
+              required
+            />
 
-      const form = event.currentTarget;
-      const formData = new FormData(form);
+            <label htmlFor="email">Your Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              required
+            />
 
-      const name = formData.get('name');
-      const email = formData.get('email');
-      const message = formData.get('message');
+            <label htmlFor="message">Your Message</label>
+            <textarea
+              id="message"
+              name="message"
+              rows="5"
+              placeholder="Write your message..."
+              maxLength={1000}
+              required
+            />
 
-      try {
-        const response = await fetch(
-          'http://localhost:5000/api/messages',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name,
-              email,
-              message
-            })
-          }
-        );
+            {/* Honeypot: bot-er jonno, manush dekhbe na */}
+            <input
+              type="text"
+              name="website"
+              tabIndex="-1"
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ display: 'none' }}
+            />
 
-        const result = await response.json();
+            <button
+              className="primary-btn"
+              type="submit"
+              disabled={isSending}
+            >
+              {isSending ? 'Sending...' : 'Send Message ↗'}
+            </button>
 
-        if (!response.ok) {
-          throw new Error(
-            result.error || 'Message could not be sent.'
-          );
-        }
-
-        alert('Your message was saved successfully!');
-        form.reset();
-
-      } catch (error) {
-        console.error('Contact form error:', error);
-
-        alert(
-          'Failed to send message. Please check whether the backend server is running.'
-        );
-      }
-    }}
-  >
-    <label htmlFor="name">Your Name</label>
-    <input
-      id="name"
-      name="name"
-      type="text"
-      placeholder="Enter your name"
-      required
-    />
-
-    <label htmlFor="email">Your Email</label>
-    <input
-      id="email"
-      name="email"
-      type="email"
-      placeholder="Enter your email"
-      required
-    />
-
-    <label htmlFor="message">Your Message</label>
-    <textarea
-      id="message"
-      name="message"
-      rows="5"
-      placeholder="Write your message..."
-      required
-    />
-
-    <button className="primary-btn" type="submit">
-      Send Message ↗
-    </button>
-  </form>
-</section>
-
-        {/* Messages from MongoDB */}
-        <section className="section" id="messages">
-          <h2>Messages from MongoDB</h2>
-
-          {messages.length === 0 ? (
-            <p>No messages found.</p>
-          ) : (
-            messages.map((msg) => (
-              <div key={msg._id}>
-                <h3>{msg.name}</h3>
-                <p>{msg.email}</p>
-                <p>{msg.message}</p>
-              </div>
-            ))
-          )}
+            {formStatus && <p role="status">{formStatus}</p>}
+          </form>
         </section>
       </main>
 
